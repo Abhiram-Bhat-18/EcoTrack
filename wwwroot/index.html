@@ -1,0 +1,2119 @@
+﻿
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoTrack | Waste Management</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f3f7f4;
+            color: #24352b;
+        }
+
+        header {
+            background: #176b45;
+            color: white;
+            padding: 24px 8%;
+        }
+
+            header h1 {
+                margin: 0 0 8px;
+            }
+
+            header p {
+                margin: 0;
+            }
+
+        main {
+            max-width: 1000px;
+            margin: 32px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        section {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 3px 12px #0000000d;
+        }
+
+        label {
+            display: block;
+            margin: 14px 0 6px;
+            font-weight: bold;
+        }
+
+        input, textarea, select, button {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #ccd8ce;
+            border-radius: 6px;
+            font: inherit;
+        }
+
+        button {
+            margin-top: 18px;
+            background: #176b45;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+            button:hover {
+                background: #105536;
+            }
+
+        #wasteMap {
+            height: 280px;
+            width: 100%;
+            margin-top: 12px;
+            border-radius: 12px;
+            border: 1px solid #ccd8ce;
+            z-index: 1;
+        }
+
+        .timeline {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+            padding: 14px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #f5fbf7, #edf5f0);
+        }
+
+        .timeline-step {
+            border-left: 3px solid #c6d5ca;
+            padding-left: 10px;
+            min-width: 0;
+        }
+
+            .timeline-step.done {
+                border-left-color: #176b45;
+            }
+
+            .timeline-step strong {
+                display: block;
+                font-size: 12px;
+                margin-bottom: 5px;
+            }
+
+            .timeline-step span {
+                font-size: 11px;
+                color: #526458;
+                overflow-wrap: anywhere;
+            }
+
+        .notification-banner {
+            padding: 12px 14px;
+            background: #eaf7ef;
+            border: 1px solid #c6e5d0;
+            border-radius: 10px;
+            margin: 12px 0;
+        }
+
+        .report {
+            border: 1px solid #e0e9e2;
+            padding: 14px;
+            margin-top: 12px;
+            border-radius: 8px;
+        }
+
+        .status {
+            color: #176b45;
+            font-weight: bold;
+        }
+
+        #message {
+            margin-top: 12px;
+        }
+
+        @media (max-width: 700px) {
+            .timeline {
+                grid-template-columns: 1fr;
+            }
+
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* EcoTrack dashboard */
+        .dashboard {
+            grid-column: 1 / -1;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-top: 18px;
+        }
+
+        .stat-card {
+            padding: 20px;
+            border: 1px solid #e0e9e2;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 3px 12px #0000000d;
+        }
+
+            .stat-card h3 {
+                margin: 0 0 12px;
+                font-size: 14px;
+                color: #526458;
+            }
+
+        .stat-number {
+            margin: 0;
+            font-size: 32px;
+            font-weight: bold;
+            color: #176b45;
+        }
+
+        .stat-card.pending {
+            border-top: 4px solid #e5a000;
+        }
+
+        .stat-card.collected {
+            border-top: 4px solid #3182ce;
+        }
+
+        .stat-card.resolved {
+            border-top: 4px solid #238653;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 480px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+
+
+        /* Modern EcoTrack UI */
+        [hidden] {
+            display: none !important;
+        }
+
+        :root {
+            color-scheme: light;
+        }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at 12% 12%, #e0f7e9 0, transparent 30%), radial-gradient(circle at 90% 82%, #d9eaff 0, transparent 28%), #f4f8f6;
+            color: #173b2c;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        header {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 18px clamp(20px, 6vw, 84px);
+            background: rgba(15, 91, 61, .94);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 8px 30px rgba(12, 63, 42, .18);
+        }
+
+            header h1 {
+                margin: 0 0 3px;
+                font-size: clamp(22px, 2.4vw, 30px);
+                letter-spacing: -.7px;
+            }
+
+            header p {
+                margin: 0;
+                color: #d8f4e5;
+                font-size: 13px;
+            }
+
+        #logoutButton {
+            width: auto;
+            margin: 0;
+            padding: 10px 18px;
+            border: 1px solid rgba(255,255,255,.3);
+            border-radius: 12px;
+            background: rgba(255,255,255,.12);
+        }
+
+            #logoutButton:hover {
+                background: rgba(255,255,255,.22);
+            }
+
+        .auth-shell {
+            width: min(1120px, calc(100% - 36px));
+            margin: 42px auto;
+            padding: 0;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 1.02fr .98fr;
+            border: 1px solid rgba(255,255,255,.85);
+            border-radius: 28px;
+            background: rgba(255,255,255,.72);
+            box-shadow: 0 30px 80px rgba(21, 74, 51, .15), 0 8px 22px rgba(21,74,51,.08);
+            backdrop-filter: blur(18px);
+        }
+
+        .auth-visual {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 650px;
+            padding: clamp(32px, 5vw, 64px);
+            color: white;
+            background: linear-gradient(145deg, #0d5138 0%, #17784f 48%, #27a56e 100%);
+            isolation: isolate;
+        }
+
+            .auth-visual::before {
+                content: "";
+                position: absolute;
+                z-index: -1;
+                width: 420px;
+                height: 420px;
+                right: -130px;
+                top: -120px;
+                border: 1px solid rgba(255,255,255,.25);
+                border-radius: 50%;
+                box-shadow: 0 0 0 35px rgba(255,255,255,.035), 0 0 0 75px rgba(255,255,255,.025);
+            }
+
+            .auth-visual::after {
+                content: "";
+                position: absolute;
+                z-index: -1;
+                width: 340px;
+                height: 340px;
+                left: -150px;
+                bottom: -160px;
+                border-radius: 50%;
+                background: rgba(126, 255, 192, .13);
+                filter: blur(4px);
+            }
+
+        .brand-mark {
+            display: grid;
+            place-items: center;
+            width: 72px;
+            height: 72px;
+            margin-bottom: 28px;
+            border: 1px solid rgba(255,255,255,.3);
+            border-radius: 22px;
+            background: linear-gradient(145deg, rgba(255,255,255,.28), rgba(255,255,255,.06));
+            box-shadow: 12px 14px 25px rgba(0,0,0,.13), inset 1px 1px 1px rgba(255,255,255,.35);
+            font-size: 34px;
+            transform: rotate(-5deg);
+        }
+
+        .eyebrow {
+            margin: 0 0 12px;
+            color: #23865d;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1.8px;
+        }
+
+        .auth-visual .eyebrow {
+            color: #c4f7dc;
+        }
+
+        .auth-visual h2 {
+            margin: 0;
+            font-size: clamp(34px, 4.1vw, 52px);
+            line-height: 1.07;
+            letter-spacing: -1.9px;
+        }
+
+            .auth-visual h2 span {
+                color: #baf5d2;
+            }
+
+        .hero-copy {
+            max-width: 390px;
+            margin: 22px 0;
+            color: #e1f7ea;
+            font-size: 15px;
+            line-height: 1.8;
+        }
+
+        .hero-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 9px;
+            margin-top: 12px;
+        }
+
+            .hero-pills span {
+                padding: 9px 12px;
+                border: 1px solid rgba(255,255,255,.22);
+                border-radius: 999px;
+                background: rgba(255,255,255,.1);
+                font-size: 11px;
+                box-shadow: 0 5px 14px rgba(0,0,0,.06);
+            }
+
+        .hero-stat {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-top: 55px;
+            padding-top: 22px;
+            border-top: 1px solid rgba(255,255,255,.2);
+        }
+
+            .hero-stat strong {
+                font-size: 16px;
+            }
+
+            .hero-stat span {
+                color: #d0f0de;
+                font-size: 12px;
+            }
+
+        .auth-card {
+            align-self: center;
+            padding: clamp(26px, 4vw, 48px);
+        }
+
+        .auth-heading h2 {
+            margin: 0 0 8px;
+            color: #173b2c;
+            font-size: clamp(25px, 3vw, 32px);
+            letter-spacing: -.9px;
+        }
+
+        .auth-heading > p:last-child {
+            margin: 0;
+            color: #6b7e73;
+            font-size: 13px;
+        }
+
+        .auth-switch {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin: 25px 0 24px;
+            padding: 5px;
+            border: 1px solid #e1ebe4;
+            border-radius: 14px;
+            background: #eef5f0;
+        }
+
+            .auth-switch .switch-button {
+                margin: 0;
+                padding: 11px 8px;
+                border-radius: 10px;
+                color: #60766a;
+                background: transparent;
+                font-size: 13px;
+                font-weight: 700;
+            }
+
+                .auth-switch .switch-button.active {
+                    color: #fff;
+                    background: linear-gradient(135deg, #126342, #1b8b5a);
+                    box-shadow: 0 5px 12px rgba(19,105,69,.23);
+                }
+
+        .auth-form h3 {
+            margin: 0 0 16px;
+            font-size: 18px;
+            letter-spacing: -.3px;
+        }
+
+        .auth-form label {
+            margin: 13px 0 7px;
+            color: #3d5a4a;
+            font-size: 12px;
+        }
+
+        .auth-form input {
+            padding: 13px 14px;
+            border: 1px solid #d8e5dc;
+            border-radius: 11px;
+            background: #fbfdfb;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s, transform .2s;
+            font-size: 13px;
+        }
+
+            .auth-form input:focus, input:focus, textarea:focus, select:focus {
+                border-color: #239766;
+                box-shadow: 0 0 0 4px rgba(35,151,102,.12);
+                outline: none;
+            }
+
+        .primary-button, .secondary-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            min-height: 46px;
+            margin-top: 20px;
+            border-radius: 12px;
+            font-weight: 750;
+            font-size: 13px;
+            transition: transform .2s, box-shadow .2s, filter .2s;
+        }
+
+        .primary-button {
+            background: linear-gradient(135deg, #116341, #209b65);
+            box-shadow: 0 8px 16px rgba(20,112,73,.22), inset 0 1px rgba(255,255,255,.25);
+        }
+
+            .primary-button span {
+                font-size: 18px;
+            }
+
+            .primary-button:hover, .secondary-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 12px 22px rgba(20,112,73,.2);
+                filter: saturate(1.1);
+            }
+
+        .secondary-button {
+            border: 1px solid #b8dfc8;
+            color: #176b45;
+            background: #effaf3;
+        }
+
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 24px 0 18px;
+            color: #90a197;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+            .auth-divider::before, .auth-divider::after {
+                content: "";
+                height: 1px;
+                flex: 1;
+                background: #e4ece6;
+            }
+
+        .register-form h3 {
+            margin-bottom: 12px;
+        }
+
+        .form-hint {
+            color: #6b7e73;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .admin-icon {
+            display: grid;
+            place-items: center;
+            width: 48px;
+            height: 48px;
+            margin-bottom: 16px;
+            border-radius: 15px;
+            color: #176b45;
+            background: #e4f6eb;
+            box-shadow: 5px 6px 14px rgba(20,112,73,.1);
+            font-size: 24px;
+        }
+
+        .form-message {
+            min-height: 20px;
+            margin: 14px 0 0;
+            color: #b42318;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .security-note {
+            margin: 20px 0 0;
+            padding-top: 16px;
+            border-top: 1px solid #e8eee9;
+            color: #7a8a80;
+            font-size: 10px;
+            line-height: 1.5;
+        }
+
+        main {
+            max-width: 1180px;
+            margin: 30px auto;
+            padding: 0 20px 40px;
+            gap: 22px;
+        }
+
+        section {
+            border: 1px solid rgba(255,255,255,.9);
+            border-radius: 20px;
+            box-shadow: 0 12px 35px rgba(29,75,52,.07), 0 2px 8px rgba(29,75,52,.04);
+        }
+
+        .dashboard-grid {
+            gap: 14px;
+        }
+
+        .stat-card {
+            border-radius: 16px;
+            box-shadow: 7px 9px 18px rgba(31,78,53,.06), inset 0 1px 0 white;
+            transition: transform .2s, box-shadow .2s;
+        }
+
+            .stat-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 10px 14px 24px rgba(31,78,53,.1);
+            }
+
+        #wasteMap {
+            height: 280px;
+            width: 100%;
+            margin-top: 12px;
+            border-radius: 12px;
+            border: 1px solid #ccd8ce;
+            z-index: 1;
+        }
+
+        .timeline {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+            padding: 14px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #f5fbf7, #edf5f0);
+        }
+
+        .timeline-step {
+            border-left: 3px solid #c6d5ca;
+            padding-left: 10px;
+            min-width: 0;
+        }
+
+            .timeline-step.done {
+                border-left-color: #176b45;
+            }
+
+            .timeline-step strong {
+                display: block;
+                font-size: 12px;
+                margin-bottom: 5px;
+            }
+
+            .timeline-step span {
+                font-size: 11px;
+                color: #526458;
+                overflow-wrap: anywhere;
+            }
+
+        .notification-banner {
+            padding: 12px 14px;
+            background: #eaf7ef;
+            border: 1px solid #c6e5d0;
+            border-radius: 10px;
+            margin: 12px 0;
+        }
+
+        .report {
+            border-radius: 14px;
+            background: linear-gradient(145deg, #fff, #f9fcfa);
+        }
+
+        button {
+            border-radius: 10px;
+            font-weight: 650;
+            transition: background .2s, transform .2s;
+        }
+
+            button:focus-visible {
+                outline: 3px solid #79d8a8;
+                outline-offset: 3px;
+            }
+
+        .upload-zone {
+            margin-top: 14px;
+            padding: 16px;
+            border: 1.5px dashed #a8cdb6;
+            border-radius: 14px;
+            background: #f6fcf8;
+        }
+
+            .upload-zone label {
+                margin-top: 0;
+            }
+
+        .upload-hint {
+            margin: 7px 0 0;
+            color: #6b7e73;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        #wasteImagePreview {
+            display: block;
+            width: 100%;
+            max-height: 220px;
+            margin-top: 12px;
+            border-radius: 12px;
+            object-fit: cover;
+            box-shadow: 0 6px 18px rgba(0,0,0,.1);
+        }
+
+        @media (max-width: 780px) {
+            .auth-shell {
+                grid-template-columns: 1fr;
+                margin: 22px auto;
+            }
+
+            .auth-visual {
+                min-height: auto;
+                padding: 30px;
+            }
+
+            .hero-stat {
+                margin-top: 28px;
+            }
+
+            .auth-card {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            header {
+                padding: 16px 18px;
+            }
+
+            .auth-shell {
+                width: calc(100% - 22px);
+                border-radius: 20px;
+            }
+
+            .auth-visual h2 {
+                font-size: 36px;
+            }
+
+            .auth-card {
+                padding: 24px 20px;
+            }
+
+            main {
+                padding: 0 12px 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>🌱 EcoTrack</h1>
+        <p>Report waste. Keep your community clean.</p>
+        <button id="logoutButton" type="button" hidden>
+            Logout
+        </button>
+    </header>
+
+
+    <section id="authPanel" class="auth-shell">
+        <div class="auth-visual">
+            <div class="orb orb-one"></div><div class="orb orb-two"></div>
+            <div class="brand-mark">🌱</div>
+            <p class="eyebrow">A cleaner tomorrow starts here</p>
+            <h2>Small actions.<br><span>Cleaner communities.</span></h2>
+            <p class="hero-copy">Report waste, follow collection progress, and help make your neighbourhood cleaner.</p>
+            <div class="hero-pills"><span>♻ Smart reporting</span><span>📍 Track progress</span><span>🌍 Make an impact</span></div>
+            <div class="hero-stat"><strong>EcoTrack</strong><span>Waste management, made simple.</span></div>
+        </div>
+
+        <div class="auth-card">
+            <div class="auth-heading">
+                <p class="eyebrow">WELCOME TO ECOTRACK</p>
+                <h2>Sign in to your space</h2>
+                <p>Choose how you want to continue.</p>
+            </div>
+            <div class="auth-switch" role="tablist" aria-label="Choose account type">
+                <button type="button" id="userAccessButton" class="switch-button active" aria-selected="true">User access</button>
+                <button type="button" id="adminAccessButton" class="switch-button" aria-selected="false">Admin access</button>
+            </div>
+            <div id="userAccessPanel">
+                <form id="loginForm" class="auth-form">
+                    <h3>Welcome back</h3>
+                    <label for="loginEmail">Email address</label>
+                    <input id="loginEmail" type="email" maxlength="256" placeholder="you@example.com" required autocomplete="username">
+                    <label for="loginPassword">Password</label>
+                    <input id="loginPassword" type="password" minlength="8" maxlength="128" placeholder="Enter your password" required autocomplete="current-password">
+                    <button type="submit" class="primary-button">Login as User <span>→</span></button>
+                </form>
+                <div class="auth-divider"><span>NEW TO ECOTRACK?</span></div>
+                <form id="registerForm" class="auth-form register-form">
+                    <h3>Create a user account</h3>
+                    <label for="registerEmail">Email address</label>
+                    <input id="registerEmail" type="email" maxlength="256" placeholder="you@example.com" required autocomplete="email">
+                    <label for="registerPassword">Create password</label>
+                    <input id="registerPassword" type="password" minlength="8" maxlength="128" placeholder="At least 8 characters" required autocomplete="new-password">
+                    <button type="submit" class="secondary-button">Create User Account</button>
+                </form>
+            </div>
+            <div id="adminAccessPanel" hidden>
+                <form id="adminLoginForm" class="auth-form">
+                    <div class="admin-icon">♙</div>
+                    <h3>Administrator sign in</h3>
+                    <p class="form-hint">Use an existing administrator account. Admin accounts cannot be created from this public page.</p>
+                    <label for="adminLoginEmail">Admin email</label>
+                    <input id="adminLoginEmail" type="email" maxlength="256" placeholder="admin@example.com" required autocomplete="username">
+                    <label for="adminLoginPassword">Password</label>
+                    <input id="adminLoginPassword" type="password" minlength="8" maxlength="128" placeholder="Enter your password" required autocomplete="current-password">
+                    <button type="submit" class="primary-button">Secure Admin Login <span>→</span></button>
+                </form>
+            </div>
+            <p id="authMessage" class="form-message" role="status" aria-live="polite"></p>
+            <p class="security-note">🔒 Your account and reports are protected by EcoTrack authentication.</p>
+        </div>
+    </section>
+
+    <main id="appContent" hidden>
+
+
+        <section id="adminPanel" class="dashboard" hidden>
+            <h2>Administrator Dashboard</h2>
+            <p>Global overview of EcoTrack activity</p>
+
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <h3>Total Users</h3>
+                    <p class="stat-number" id="adminTotalUsers">0</p>
+                </div>
+
+                <div class="stat-card">
+                    <h3>Total Reports</h3>
+                    <p class="stat-number" id="adminTotalReports">0</p>
+                </div>
+
+                <div class="stat-card pending">
+                    <h3>Pending</h3>
+                    <p class="stat-number" id="adminPendingReports">0</p>
+                </div>
+
+                <div class="stat-card collected">
+                    <h3>Collected</h3>
+                    <p class="stat-number" id="adminCollectedReports">0</p>
+                </div>
+
+                <div class="stat-card resolved">
+                    <h3>Resolved</h3>
+                    <p class="stat-number" id="adminResolvedReports">0</p>
+                </div>
+            </div>
+
+
+            <h3>All Waste Reports</h3>
+            <button id="adminRefreshButton" type="button">
+                Refresh Admin Dashboard
+            </button>
+
+            <div id="adminReports"></div>
+            <p id="adminMessage" role="status"></p>
+
+            <hr>
+
+            <h3>Registered Users</h3>
+
+            <label for="userSearchInput">Search by email</label>
+            <input id="userSearchInput"
+                   type="search"
+                   placeholder="Enter user email...">
+
+            <label for="userRoleFilter">Filter by role</label>
+            <select id="userRoleFilter">
+                <option value="">All roles</option>
+                <option value="User">User</option>
+                <option value="Admin">Admin</option>
+            </select>
+
+            <label for="userStatusFilter">Filter by account status</label>
+            <select id="userStatusFilter">
+                <option value="">All accounts</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+
+            <button id="loadUsersButton" type="button">
+                Refresh Users
+            </button>
+
+            <p id="usersMessage" role="status"></p>
+            <div id="usersList"></div>
+
+
+            <hr style="margin: 28px 0;">
+
+            <h3>Admin Audit History</h3>
+            <p>Track administrator actions across EcoTrack.</p>
+
+            <button id="loadAuditLogsButton" type="button">
+                Refresh Audit History
+            </button>
+
+            <p id="auditLogsMessage" role="status"></p>
+
+            <div id="auditLogsList"></div>
+
+        </section>
+
+
+        <section class="dashboard">
+            <h2>EcoTrack Dashboard</h2>
+            <p>Overview of all reported waste</p>
+            <div class="notification-banner">
+                <strong>Report notifications</strong>
+                <p>Allow browser notifications to be alerted when a report's status changes while EcoTrack is open.</p>
+                <button id="enableNotificationsButton" type="button">Enable Notifications</button>
+                <p id="notificationMessage" role="status"></p>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <h3>Total Reports</h3>
+                    <p class="stat-number" id="totalReports">0</p>
+                </div>
+
+                <div class="stat-card pending">
+                    <h3>Pending</h3>
+                    <p class="stat-number" id="pendingReports">0</p>
+                </div>
+
+                <div class="stat-card collected">
+                    <h3>Collected</h3>
+                    <p class="stat-number" id="collectedReports">0</p>
+                </div>
+
+                <div class="stat-card resolved">
+                    <h3>Resolved</h3>
+                    <p class="stat-number" id="resolvedReports">0</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Submit a Waste Report</h2>
+
+            <form id="reportForm">
+
+                <label for="wasteType">Waste type</label>
+                <select id="wasteType" required>
+                    <option value="">Select waste type</option>
+                    <option>Plastic</option>
+                    <option>Organic</option>
+                    <option>Paper</option>
+                    <option>Electronic</option>
+                    <option>Mixed</option>
+                    <option>Other</option>
+                </select>
+
+                <label for="description">Description</label>
+<textarea id="description"
+          minlength="3"
+          maxlength="500"
+          required
+          placeholder="Describe the waste (3–500 characters)"></textarea>
+
+                <label for="location">Location</label>
+                <input id="location"
+                       minlength="2"
+                       maxlength="200"
+                       required
+                       placeholder="Where is the waste?">
+                <p class="upload-hint">Select the exact location on the map, or use your current location.</p>
+                <button id="useMyLocationButton" type="button">Use My Current Location</button>
+                <div id="wasteMap" aria-label="Select waste location on map"></div>
+                <p id="mapLocationMessage" role="status">Click the map to place a pin.</p>
+                <input id="latitude" type="hidden">
+                <input id="longitude" type="hidden">
+
+                <div class="upload-zone">
+                    <label for="wasteImage">Add a photo of the waste (optional)</label>
+                    <input id="wasteImage" type="file" accept="image/png,image/jpeg,image/webp">
+                    <p class="upload-hint">Choose a JPG, PNG, or WebP image up to 5 MB. A preview will appear below. Image storage requires the API/database upload step.</p>
+                    <img id="wasteImagePreview" alt="Selected waste photo preview" hidden>
+                </div>
+
+                <button id="submitButton" type="submit">Submit Report</button>
+
+            </form>
+
+            <p id="message" role="status"></p>
+        </section>
+
+        <section>
+
+            <h2>Reported Waste</h2>
+
+            <label for="searchInput">Search reports</label>
+            <input id="searchInput" placeholder="Search description or location">
+
+            <label for="filterWasteType">Filter by waste type</label>
+            <select id="filterWasteType">
+                <option value="">All waste types</option>
+                <option>Plastic</option>
+                <option>Organic</option>
+                <option>Paper</option>
+                <option>Electronic</option>
+                <option>Mixed</option>
+                <option>Other</option>
+            </select>
+
+            <label for="filterStatus">Filter by status</label>
+            <select id="filterStatus">
+                <option value="">All statuses</option>
+                <option>Pending</option>
+                <option>Collected</option>
+                <option>Resolved</option>
+            </select>
+
+            <button id="refreshButton" type="button">Refresh Reports</button>
+            <div id="reports">Loading reports...</div>
+
+        </section>
+    </main>
+
+    <script>
+// @ts-nocheck
+
+
+const authPanel = document.getElementById("authPanel");
+const appContent = document.getElementById("appContent");
+const authMessage = document.getElementById("authMessage");
+const logoutButton = document.getElementById("logoutButton");
+
+const userAccessButton = document.getElementById("userAccessButton");
+const adminAccessButton = document.getElementById("adminAccessButton");
+const userAccessPanel = document.getElementById("userAccessPanel");
+const adminAccessPanel = document.getElementById("adminAccessPanel");
+
+function setAccessMode(mode) {
+            const isAdminMode = mode === "admin";
+            userAccessPanel.hidden = isAdminMode;
+            adminAccessPanel.hidden = !isAdminMode;
+            userAccessButton.classList.toggle("active", !isAdminMode);
+            adminAccessButton.classList.toggle("active", isAdminMode);
+            userAccessButton.setAttribute("aria-selected", String(!isAdminMode));
+            adminAccessButton.setAttribute("aria-selected", String(isAdminMode));
+            authMessage.textContent = "";
+}
+
+userAccessButton.addEventListener("click", () => setAccessMode("user"));
+adminAccessButton.addEventListener("click", () => setAccessMode("admin"));
+
+function showAuthenticatedApp(isLoggedIn) {
+            authPanel.hidden = isLoggedIn;
+            appContent.hidden = !isLoggedIn;
+            logoutButton.hidden = !isLoggedIn;
+}
+
+function getToken() {
+            return sessionStorage.getItem("ecoTrackToken");
+}
+
+async function apiFetch(url, options = {}) {
+            const token = getToken();
+
+            const headers = new Headers(options.headers || {});
+            headers.set("Authorization", `Bearer ${token}`);
+
+            return fetch(url, {
+                ...options,
+                headers
+            });
+}
+
+async function readApiMessage(response) {
+            const result = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                const validationErrors = result?.errors
+                    ? Object.values(result.errors).flat().join(" ")
+                    : "";
+
+                throw new Error(
+                    validationErrors ||
+                    result?.message ||
+                    result?.detail ||
+                    "Request failed. Please try again."
+                );
+            }
+
+            return result;
+}
+
+
+function updateRolePanels() {
+            const adminPanel = document.getElementById("adminPanel");
+            const role = sessionStorage.getItem("ecoTrackRole");
+            const token = sessionStorage.getItem("ecoTrackToken");
+
+            const isAdmin = Boolean(token) &&
+                role?.trim().toLowerCase() === "admin";
+
+            adminPanel.hidden = !isAdmin;
+
+            if (isAdmin) {
+                loadAdminDashboard();
+                loadAdminUsers();
+                loadAuditLogs();
+            }
+}
+
+async function authenticate(url, email, password, expectedRole) {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ email, password })
+            });
+
+            const result = await readApiMessage(response);
+
+            if (!result.token) {
+                throw new Error(
+                    "The server did not return an authentication token."
+                );
+            }
+
+            // Support common JWT role claim formats.
+            let role = result.user?.role ?? result.user?.Role
+                ?? result.role ?? result.Role ?? null;
+
+            if (!role) {
+                try {
+                    const payload = JSON.parse(
+                        atob(
+                            result.token.split(".")[1]
+                                .replace(/-/g, "+")
+                                .replace(/_/g, "/")
+                        )
+                    );
+
+                    role =
+                        payload.role ??
+                        payload.roles ??
+                        payload[
+                        "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+                        ] ??
+                        payload[
+                        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role"
+                        ] ??
+                        null;
+                } catch {
+                    // Leave role unset if the token cannot be decoded.
+                }
+            }
+
+            if (typeof role !== "string" || !role.trim()) {
+                throw new Error(
+                    "Login succeeded, but the server did not provide a readable role. Check the AuthController login response."
+                );
+            }
+
+            if (expectedRole && role.trim().toLowerCase() !== expectedRole.toLowerCase()) {
+                throw new Error(expectedRole === "Admin"
+                    ? "This account is not an administrator. Use User access instead."
+                    : "Administrator accounts must sign in through Admin access.");
+            }
+
+            sessionStorage.setItem("ecoTrackToken", result.token);
+            sessionStorage.setItem("ecoTrackRole", role);
+
+            showAuthenticatedApp(true);
+            updateRolePanels();
+            initializeWasteMap();
+            startNotificationPolling();
+
+            authMessage.textContent = "";
+            await loadReports();
+}
+
+
+
+async function loadAdminDashboard() {
+            const adminMessage = document.getElementById("adminMessage");
+            const adminReports = document.getElementById("adminReports");
+
+            adminMessage.textContent = "Loading administrator dashboard...";
+            adminReports.replaceChildren();
+
+            try {
+                const statsResponse = await apiFetch("/api/Admin/dashboard");
+
+                if (!statsResponse.ok) {
+                    throw new Error(
+                        statsResponse.status === 403
+                            ? "Your account does not have administrator permission."
+                            : statsResponse.status === 401
+                                ? "Your login has expired. Please log in again."
+                                : "Could not load administrator statistics."
+                    );
+                }
+
+                const stats = await statsResponse.json();
+
+                document.getElementById("adminTotalUsers").textContent =
+                    stats.totalUsers;
+                document.getElementById("adminTotalReports").textContent =
+                    stats.totalReports;
+                document.getElementById("adminPendingReports").textContent =
+                    stats.pendingReports;
+                document.getElementById("adminCollectedReports").textContent =
+                    stats.collectedReports;
+                document.getElementById("adminResolvedReports").textContent =
+                    stats.resolvedReports;
+
+                const reportsResponse = await apiFetch("/api/Admin/reports");
+
+                if (!reportsResponse.ok) {
+                    throw new Error("Could not load all waste reports.");
+                }
+
+                const reportsData = await reportsResponse.json();
+
+                if (reportsData.length === 0) {
+                    adminReports.textContent = "No waste reports found.";
+                }
+
+                reportsData.forEach(report => {
+                    const card = document.createElement("article");
+                    card.className = "report";
+
+                    const title = document.createElement("h3");
+                    title.textContent = report.wasteType;
+
+                    const description = document.createElement("p");
+                    description.textContent = report.description;
+
+                    const location = document.createElement("p");
+                    location.textContent = "Location: " + report.location;
+
+                    const owner = document.createElement("p");
+                    owner.textContent = "User ID: " +
+                        (report.userId ?? "Unassigned");
+
+                    const status = document.createElement("p");
+                    status.className = "status";
+                    status.textContent = "Status: " + report.status;
+
+                    const statusLabel = document.createElement("label");
+                    statusLabel.textContent = "Update status";
+
+                    const statusSelect = document.createElement("select");
+
+                    ["Pending", "Collected", "Resolved"].forEach(value => {
+                        const option = document.createElement("option");
+                        option.value = value;
+                        option.textContent = value;
+                        option.selected = value === report.status;
+                        statusSelect.appendChild(option);
+                    });
+
+                    const updateButton = document.createElement("button");
+                    updateButton.textContent = "Update Status";
+
+                    updateButton.addEventListener("click", async () => {
+                        updateButton.disabled = true;
+                        adminMessage.textContent = "Updating report...";
+
+                        try {
+                            const response = await apiFetch(
+                                `/api/Admin/reports/${report.id}/status`,
+                                {
+                                    method: "PUT",
+                                    headers: {
+                                        "Content-Type": "application/json"
+                                    },
+                                    body: JSON.stringify(statusSelect.value)
+                                }
+                            );
+
+                            const result = await response.json().catch(() => null);
+
+                            if (!response.ok) {
+                                throw new Error(
+                                    result?.message ||
+                                    result?.detail ||
+                                    "Status update failed."
+                                );
+                            }
+
+                            adminMessage.textContent =
+                                "Report status updated successfully.";
+
+                            await loadAdminDashboard();
+                            await loadAdminUsers();
+                            await loadReports();
+                        } catch (error) {
+                            adminMessage.textContent =
+                                error instanceof Error
+                                    ? error.message
+                                    : "Could not update report status.";
+                        } finally {
+                            updateButton.disabled = false;
+                        }
+                    });
+
+                    const timelineHeading = document.createElement("h4");
+                    timelineHeading.textContent = "Tracking timeline";
+                    const timeline = createReportTimeline(report);
+
+                    card.append(
+                        title,
+                        description,
+                        location,
+                        owner,
+                        status,
+                        timelineHeading,
+                        timeline,
+                        statusLabel,
+                        statusSelect,
+                        updateButton
+                    );
+
+                    adminReports.appendChild(card);
+                });
+
+                if (reportsData.length > 0) {
+                    adminMessage.textContent = "Administrator dashboard loaded.";
+                }
+            } catch (error) {
+                console.error("Admin dashboard error:", error);
+
+                adminMessage.textContent =
+                    error instanceof Error
+                        ? error.message
+                        : "Unable to load administrator dashboard.";
+            }
+}
+
+document.getElementById("adminRefreshButton")
+            .addEventListener("click", loadAdminDashboard);
+
+document.getElementById("registerForm")
+            .addEventListener("submit", async event => {
+                event.preventDefault();
+                authMessage.textContent = "";
+
+                const email = document.getElementById("registerEmail").value.trim();
+                const password = document.getElementById("registerPassword").value;
+
+                try {
+                    const response = await fetch("/api/Auth/register", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({ email, password })
+                    });
+
+                    await readApiMessage(response);
+
+                    authMessage.textContent =
+                        "Registration successful. Please log in.";
+                } catch (error) {
+                    authMessage.textContent =
+                        error instanceof Error
+                            ? error.message
+                            : "Registration failed.";
+                }
+            });
+
+document.getElementById("loginForm")
+            .addEventListener("submit", async event => {
+                event.preventDefault();
+                authMessage.textContent = "";
+
+                const email = document.getElementById("loginEmail").value.trim();
+                const password = document.getElementById("loginPassword").value;
+
+                try {
+                    await authenticate("/api/Auth/login", email, password, "User");
+                } catch (error) {
+                    authMessage.textContent =
+                        error instanceof Error
+                            ? error.message
+                            : "Login failed.";
+                }
+            });
+
+document.getElementById("adminLoginForm")
+            .addEventListener("submit", async event => {
+                event.preventDefault();
+                authMessage.textContent = "";
+                const email = document.getElementById("adminLoginEmail").value.trim();
+                const password = document.getElementById("adminLoginPassword").value;
+                try {
+                    await authenticate("/api/Auth/login", email, password, "Admin");
+                } catch (error) {
+                    authMessage.textContent = error instanceof Error
+                        ? error.message
+                        : "Administrator login failed.";
+                }
+            });
+
+logoutButton.addEventListener("click", () => {
+            sessionStorage.removeItem("ecoTrackToken");
+            sessionStorage.removeItem("ecoTrackRole");
+            showAuthenticatedApp(false);
+            authMessage.textContent = "You have logged out.";
+});
+
+const isLoggedIn = Boolean(getToken());
+
+showAuthenticatedApp(isLoggedIn);
+
+if (isLoggedIn) {
+            updateRolePanels();
+            initializeWasteMap();
+            startNotificationPolling();
+}
+
+const form = document.getElementById("reportForm");
+const messageElement = document.getElementById("message");
+
+if (!(messageElement instanceof HTMLParagraphElement)) {
+                    throw new Error("Message element was not found.");
+}
+
+const message = messageElement;
+const reportsElement = document.getElementById("reports");
+
+if (!(reportsElement instanceof HTMLDivElement)) {
+                    throw new Error("Reports container was not found.");
+}
+
+const reports = reportsElement;
+
+if (!(form instanceof HTMLFormElement) ||
+                    !(message instanceof HTMLElement) ||
+                    !(reports instanceof HTMLElement)) {
+                    throw new Error("Required EcoTrack page elements were not found.");
+}
+
+
+function updateDashboard(data) {
+                    const total = data.length;
+
+                    const pending = data.filter(report =>
+                        report.status?.toLowerCase() === "pending"
+                    ).length;
+
+                    const collected = data.filter(report =>
+                        report.status?.toLowerCase() === "collected"
+                    ).length;
+
+                    const resolved = data.filter(report =>
+                        report.status?.toLowerCase() === "resolved"
+                    ).length;
+
+                    document.getElementById("totalReports").textContent = total;
+                    document.getElementById("pendingReports").textContent = pending;
+                    document.getElementById("collectedReports").textContent = collected;
+                    document.getElementById("resolvedReports").textContent = resolved;
+}
+
+function formatTimelineDate(value) {
+            if (!value) return "Not yet";
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? "Not recorded" : date.toLocaleString();
+}
+
+function createReportTimeline(report) {
+            const currentStatus = (report.status || "Pending").toLowerCase();
+            const submittedAt = report.reportedAt || report.createdAt;
+            const collectedAt = report.collectedAt || report.collectedOn;
+            const resolvedAt = report.resolvedAt || report.resolvedOn;
+
+            const timeline = document.createElement("div");
+            timeline.className = "timeline";
+            const steps = [
+                { title: "Submitted", time: submittedAt, done: Boolean(submittedAt) },
+                { title: "Collected", time: collectedAt, done: Boolean(collectedAt) || currentStatus === "collected" || currentStatus === "resolved" },
+                { title: "Resolved", time: resolvedAt, done: Boolean(resolvedAt) || currentStatus === "resolved" }
+            ];
+
+            steps.forEach(step => {
+                const item = document.createElement("div");
+                item.className = "timeline-step" + (step.done ? " done" : "");
+                const title = document.createElement("strong");
+                title.textContent = (step.done ? "✓ " : "○ ") + step.title;
+                const date = document.createElement("span");
+                date.textContent = formatTimelineDate(step.time);
+                item.append(title, date);
+                timeline.appendChild(item);
+            });
+            return timeline;
+}
+
+let knownReportStatuses = null;
+let notificationPollStarted = false;
+
+async function checkReportStatusNotifications(showInitialMessage = false) {
+            if (!getToken()) return;
+            try {
+                const response = await apiFetch("/api/WasteReports");
+                if (!response.ok) return;
+                const data = await response.json();
+                const current = {};
+                data.forEach(report => {
+                    current[String(report.id)] = report.status;
+                });
+
+                if (knownReportStatuses) {
+                    data.forEach(report => {
+                        const id = String(report.id);
+                        const oldStatus = knownReportStatuses[id];
+                        if (oldStatus && oldStatus !== report.status && "Notification" in window && Notification.permission === "granted") {
+                            new Notification("EcoTrack report updated", {
+                                body: `Report #${report.id}: ${oldStatus} → ${report.status}`,
+                                tag: `ecotrack-report-${id}`
+                            });
+                        }
+                    });
+                }
+                knownReportStatuses = current;
+                if (showInitialMessage) {
+                    document.getElementById("notificationMessage").textContent =
+                        "Notifications are enabled. EcoTrack checks for status changes while this page is open.";
+                }
+            } catch (error) {
+                console.warn("Could not check report notifications.", error);
+            }
+}
+
+function startNotificationPolling() {
+            if (notificationPollStarted || !getToken()) return;
+            notificationPollStarted = true;
+            checkReportStatusNotifications();
+            window.setInterval(() => checkReportStatusNotifications(), 30000);
+}
+
+async function loadReports() {
+
+
+                            reports.textContent = "Loading reports...";
+
+                            try {
+                                const response = await apiFetch("/api/WasteReports");
+                                if (!response.ok) {
+                                    throw new Error("Could not load reports.");
+                                }
+
+                                const data = await response.json();
+
+                                updateDashboard(data);
+
+                                reports.replaceChildren();
+
+                                if (data.length === 0) {
+                                    reports.textContent = "No waste reports yet.";
+                                    return;
+                                }
+
+
+                                const searchTerm =
+                                    document.getElementById("searchInput").value.toLowerCase();
+
+                                const selectedWasteType =
+                                    document.getElementById("filterWasteType").value;
+
+                                const selectedStatus =
+                                    document.getElementById("filterStatus").value;
+
+
+                                const filteredReports = data.filter(report => {
+                                    const matchesSearch =
+                                        report.description.toLowerCase().includes(searchTerm) ||
+                                        report.location.toLowerCase().includes(searchTerm);
+
+                                    const matchesWasteType =
+                                        !selectedWasteType || report.wasteType === selectedWasteType;
+
+                                    const matchesStatus =
+                                        !selectedStatus || report.status === selectedStatus;
+
+                                    return matchesSearch && matchesWasteType && matchesStatus;
+                                });
+
+                                if (filteredReports.length === 0) {
+                                    reports.textContent = "No matching waste reports found.";
+                                    return;
+                                }
+
+
+                                filteredReports.forEach(report => {
+                                    const card = document.createElement("article");
+                                    card.className = "report";
+
+                                    const title = document.createElement("h3");
+                                    title.textContent = report.wasteType;
+
+                                    const description = document.createElement("p");
+                                    description.textContent = report.description;
+
+                                    const location = document.createElement("p");
+                                    location.textContent = "Location: " + report.location;
+
+
+                                    const status = document.createElement("p");
+                                    status.className = "status";
+                                    status.textContent = "Status: " + report.status;
+
+                                    const statusLabel = document.createElement("label");
+                                    statusLabel.textContent = "Update status";
+
+                                    const statusSelect = document.createElement("select");
+
+                                    ["Pending", "Collected", "Resolved"].forEach(value => {
+                                        const option = document.createElement("option");
+                                        option.value = value;
+                                        option.textContent = value;
+                                        option.selected = value === report.status;
+                                        statusSelect.appendChild(option);
+                                    });
+
+                                    const updateButton = document.createElement("button");
+                                    updateButton.textContent = "Update Status";
+
+                                    updateButton.addEventListener("click", async () => {
+                                        updateButton.disabled = true;
+                                        message.textContent = "Updating status...";
+
+                                        try {
+                                            const response = await apiFetch(
+                                                `/api/WasteReports/${report.id}/status`,
+                                                {
+                                                    method: "PUT",
+                                                    headers: {
+                                                        "Content-Type": "application/json"
+                                                    },
+                                                    body: JSON.stringify(statusSelect.value)
+                                                }
+                                            );
+
+                                            if (!response.ok) {
+                                                throw new Error("Status update failed.");
+                                            }
+
+                                            message.textContent = "Status updated successfully!";
+                                            await loadReports();
+                                        } catch (error) {
+                                            console.error("Status update error:", error);
+
+                                            message.textContent =
+                                                error instanceof Error
+                                                    ? error.message
+                                                    : "Could not update status. Please try again.";
+
+                                            message.style.color = "#b42318";
+                                            updateButton.disabled = false;
+                                        }
+                                    });
+
+                                    const timelineHeading = document.createElement("h4");
+                                    timelineHeading.textContent = "Report tracking timeline";
+                                    const timeline = createReportTimeline(report);
+
+                                    card.append(
+                                        title,
+                                        description,
+                                        location,
+                                        status,
+                                        timelineHeading,
+                                        timeline,
+                                        statusLabel,
+                                        statusSelect,
+                                        updateButton
+                                    );
+
+                                    reports.appendChild(card);
+
+                                });
+                            } catch (error) {
+                                console.error("Error loading reports:", error);
+
+                                reports.textContent =
+                                    "Unable to load reports. Please check your connection and try again.";
+                            }
+                        }
+
+
+async function loadAuditLogs() {
+            const message = document.getElementById("auditLogsMessage");
+            const list = document.getElementById("auditLogsList");
+
+            message.textContent = "Loading audit history...";
+            list.replaceChildren();
+
+            try {
+                const response = await apiFetch(
+                    "/api/admin/audit-logs?page=1&pageSize=20"
+                );
+
+                if (!response.ok) {
+                    throw new Error("Could not load audit history.");
+                }
+
+                const result = await response.json();
+
+                if (!result.logs || result.logs.length === 0) {
+                    message.textContent = "No audit records found yet.";
+                    return;
+                }
+
+                result.logs.forEach(log => {
+                    const card = document.createElement("article");
+                    card.className = "report";
+
+                    const heading = document.createElement("h3");
+                    heading.textContent = log.action;
+
+                    const details = document.createElement("p");
+                    details.textContent =
+                        `Administrator: ${log.actorEmail} | ` +
+                        `Entity: ${log.entityType} | ID: ${log.entityId ?? "N/A"}`;
+
+                    const description = document.createElement("p");
+                    description.textContent = log.details ?? "";
+
+                    const date = document.createElement("p");
+                    date.textContent = new Date(log.createdAt).toLocaleString();
+
+                    card.append(heading, details, description, date);
+                    list.appendChild(card);
+                });
+
+                message.textContent =
+                    `Showing ${result.logs.length} of ${result.total} audit records.`;
+            } catch (error) {
+                message.textContent =
+                    error instanceof Error
+                        ? error.message
+                        : "Unable to load audit history.";
+            }
+}
+
+document.getElementById("loadAuditLogsButton")
+            .addEventListener("click", loadAuditLogs);
+
+
+
+async function loadAdminUsers() {
+            const usersList = document.getElementById("usersList");
+            const usersMessage = document.getElementById("usersMessage");
+
+            usersList.replaceChildren();
+            usersMessage.textContent = "Loading users...";
+
+            try {
+                const response = await apiFetch("/api/admin/users");
+
+                if (!response.ok) {
+                    throw new Error(
+                        response.status === 401
+                            ? "Your session has expired. Please log in again."
+                            : response.status === 403
+                                ? "Administrator permission is required."
+                                : `Unable to load users. HTTP ${response.status}.`
+                    );
+                }
+
+
+                const users = await response.json();
+
+                const searchTerm = document
+                    .getElementById("userSearchInput")
+                    .value.trim()
+                    .toLowerCase();
+
+                const selectedRole = document
+                    .getElementById("userRoleFilter")
+                    .value;
+
+                const selectedStatus = document
+                    .getElementById("userStatusFilter")
+                    .value;
+
+                const filteredUsers = users.filter(user => {
+                    const email = (user.Email ?? user.email ?? "").toLowerCase();
+                    const role = user.Role ?? user.role ?? "";
+                    const isActive = user.IsActive ?? user.isActive;
+
+                    const matchesEmail = email.includes(searchTerm);
+                    const matchesRole = !selectedRole || role === selectedRole;
+
+                    const matchesStatus =
+                        !selectedStatus ||
+                        (selectedStatus === "active" && isActive === true) ||
+                        (selectedStatus === "inactive" && isActive === false);
+
+                    return matchesEmail && matchesRole && matchesStatus;
+                });
+
+
+                filteredUsers.forEach(user => {
+
+                    const card = document.createElement("article");
+                    card.className = "report";
+
+                    const title = document.createElement("h3");
+                    title.textContent = user.Email ?? user.email;
+
+                    const details = document.createElement("p");
+                    details.textContent =
+                        `ID: ${user.Id ?? user.id} | Role: ${user.Role ?? user.role} | ` +
+                        `Active: ${user.IsActive ?? user.isActive}`;
+
+                    const roleSelect = document.createElement("select");
+
+                    ["User", "Admin"].forEach(role => {
+                        const option = document.createElement("option");
+                        option.value = role;
+                        option.textContent = role;
+                        option.selected = role === (user.Role ?? user.role);
+                        roleSelect.appendChild(option);
+                    });
+
+                    const roleButton = document.createElement("button");
+                    roleButton.textContent = "Update Role";
+
+                    roleButton.addEventListener("click", async () => {
+                        const id = user.Id ?? user.id;
+
+                        const result = await apiFetch(
+                            `/api/admin/users/${id}/role`,
+                            {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ role: roleSelect.value })
+                            }
+                        );
+
+                        if (!result.ok) {
+                            usersMessage.textContent = await result.text();
+                            return;
+                        }
+
+                        usersMessage.textContent = "Role updated. Log in again if your role changed.";
+                        await loadAdminUsers();
+                    });
+
+                    const activeButton = document.createElement("button");
+                    const isActive = user.IsActive ?? user.isActive;
+                    activeButton.textContent = isActive ? "Deactivate" : "Activate";
+
+                    activeButton.addEventListener("click", async () => {
+                        const id = user.Id ?? user.id;
+
+                        const result = await apiFetch(
+                            `/api/admin/users/${id}/active`,
+                            {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ isActive: !isActive })
+                            }
+                        );
+
+                        if (!result.ok) {
+                            usersMessage.textContent = await result.text();
+                            return;
+                        }
+
+                        usersMessage.textContent = "Account status updated.";
+                        await loadAdminUsers();
+                    });
+
+                    card.append(title, details, roleSelect, roleButton, activeButton);
+                    usersList.appendChild(card);
+                });
+
+
+                if (filteredUsers.length === 0) {
+                    usersMessage.textContent = users.length === 0
+                        ? "No registered users found."
+                        : "No users match the selected filters.";
+                } else {
+                    usersMessage.textContent =
+                        `Showing ${filteredUsers.length} of ${users.length} users.`;
+                }
+
+            } catch (error) {
+                usersMessage.textContent =
+                    error instanceof Error ? error.message : "Could not load users.";
+            }
+}
+
+document.getElementById("loadUsersButton")
+            .addEventListener("click", loadAdminUsers);
+document.getElementById("userSearchInput")
+            .addEventListener("input", loadAdminUsers);
+
+document.getElementById("userRoleFilter")
+            .addEventListener("change", loadAdminUsers);
+
+document.getElementById("userStatusFilter")
+            .addEventListener("change", loadAdminUsers);
+
+
+
+const submitButton = document.getElementById("submitButton");
+const wasteImageInput = document.getElementById("wasteImage");
+const wasteImagePreview = document.getElementById("wasteImagePreview");
+let selectedWasteImageUrl = null;
+
+wasteImageInput.addEventListener("change", () => {
+            const file = wasteImageInput.files?.[0];
+            if (selectedWasteImageUrl) {
+                URL.revokeObjectURL(selectedWasteImageUrl);
+                selectedWasteImageUrl = null;
+            }
+            if (!file) {
+                wasteImagePreview.removeAttribute("src");
+                wasteImagePreview.hidden = true;
+                return;
+            }
+            if (!file.type.startsWith("image/")) {
+                wasteImageInput.value = "";
+                wasteImagePreview.hidden = true;
+                message.textContent = "Please choose an image file.";
+                message.style.color = "#b42318";
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                wasteImageInput.value = "";
+                wasteImagePreview.hidden = true;
+                message.textContent = "Image must be 5 MB or smaller.";
+                message.style.color = "#b42318";
+                return;
+            }
+            selectedWasteImageUrl = URL.createObjectURL(file);
+            wasteImagePreview.src = selectedWasteImageUrl;
+            wasteImagePreview.hidden = false;
+            message.textContent = "Photo selected for preview. It will not be stored until image upload is added to the API.";
+            message.style.color = "#176b45";
+});
+
+// Interactive map: clicking sets the location text and coordinates.
+let wasteMap = null;
+let wasteMapMarker = null;
+
+function setSelectedWasteLocation(latitude, longitude) {
+            document.getElementById("latitude").value = String(latitude);
+            document.getElementById("longitude").value = String(longitude);
+            document.getElementById("location").value =
+                `Map pin: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+            document.getElementById("mapLocationMessage").textContent =
+                `Selected coordinates: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+            if (wasteMapMarker) wasteMapMarker.setLatLng([latitude, longitude]);
+            else wasteMapMarker = L.marker([latitude, longitude]).addTo(wasteMap);
+}
+
+function initializeWasteMap() {
+            if (wasteMap || !window.L) return;
+            wasteMap = L.map("wasteMap").setView([12.9716, 77.5946], 11);
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                maxZoom: 19,
+                attribution: "&copy; OpenStreetMap contributors"
+            }).addTo(wasteMap);
+            wasteMap.on("click", event => {
+                setSelectedWasteLocation(event.latlng.lat, event.latlng.lng);
+            });
+            document.getElementById("useMyLocationButton").addEventListener("click", () => {
+                const mapMessage = document.getElementById("mapLocationMessage");
+                if (!navigator.geolocation) {
+                    mapMessage.textContent = "Geolocation is not supported by this browser.";
+                    return;
+                }
+                mapMessage.textContent = "Requesting your location...";
+                navigator.geolocation.getCurrentPosition(position => {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+                    wasteMap.setView([latitude, longitude], 16);
+                    setSelectedWasteLocation(latitude, longitude);
+                }, () => {
+                    mapMessage.textContent = "Could not access your location. Allow location permission or select a pin on the map.";
+                }, { enableHighAccuracy: true, timeout: 10000 });
+            });
+            setTimeout(() => wasteMap.invalidateSize(), 150);
+}
+
+document.getElementById("enableNotificationsButton").addEventListener("click", async () => {
+            const notificationMessage = document.getElementById("notificationMessage");
+            if (!("Notification" in window)) {
+                notificationMessage.textContent = "Browser notifications are not supported. Status updates will still appear when you refresh EcoTrack.";
+                return;
+            }
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") {
+                notificationMessage.textContent = "Notifications enabled.";
+                await checkReportStatusNotifications(true);
+                startNotificationPolling();
+            } else {
+                notificationMessage.textContent = "Notifications were not allowed. You can enable them in your browser settings.";
+            }
+});
+
+form.addEventListener("submit", async (event) => {
+                    event.preventDefault();
+
+                    if (submitButton instanceof HTMLButtonElement) {
+                        submitButton.disabled = true;
+                        submitButton.textContent = "Submitting...";
+                    }
+
+                    message.textContent = "";
+                    message.style.color = "#24352b";
+
+                    const wasteTypeElement = document.getElementById("wasteType");
+                    const descriptionElement = document.getElementById("description");
+                    const locationElement = document.getElementById("location");
+
+                    if (
+                        !(wasteTypeElement instanceof HTMLSelectElement) ||
+                        !(descriptionElement instanceof HTMLTextAreaElement) ||
+                        !(locationElement instanceof HTMLInputElement)
+                    ) {
+                        message.textContent = "Form fields could not be found.";
+                        message.style.color = "#b42318";
+                        restoreSubmitButton();
+                        return;
+                    }
+
+                    const latitudeValue = document.getElementById("latitude").value;
+                    const longitudeValue = document.getElementById("longitude").value;
+                    const report = {
+                        wasteType: wasteTypeElement.value,
+                        description: descriptionElement.value.trim(),
+                        location: locationElement.value.trim(),
+                        latitude: latitudeValue ? Number(latitudeValue) : null,
+                        longitude: longitudeValue ? Number(longitudeValue) : null
+                    };
+
+                    if (!report.wasteType) {
+                        message.textContent = "Please select a waste type.";
+                        message.style.color = "#b42318";
+                        restoreSubmitButton();
+                        return;
+                    }
+
+                    if (report.description.length < 3 || report.description.length > 500) {
+                        message.textContent =
+                            "Description must be between 3 and 500 characters.";
+                        message.style.color = "#b42318";
+                        restoreSubmitButton();
+                        return;
+                    }
+
+                    if (report.location.length < 2 || report.location.length > 200) {
+                        message.textContent =
+                            "Location must be between 2 and 200 characters.";
+                        message.style.color = "#b42318";
+                        restoreSubmitButton();
+                        return;
+                    }
+
+                    try {
+                        const response = await apiFetch("/api/WasteReports", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify(report)
+                        });
+
+                        const result = await response.json().catch(() => null);
+
+                        if (!response.ok) {
+                            const validationErrors = result?.errors
+                                ? Object.values(result.errors).flat().join(" ")
+                                : "";
+
+                            throw new Error(
+                                validationErrors ||
+                                result?.detail ||
+                                result?.message ||
+                                "Could not submit the report. Please check your input."
+                            );
+                        }
+
+                        message.textContent = "Report submitted successfully!";
+                        message.style.color = "#176b45";
+
+                        form.reset();
+                        await loadReports();
+                    } catch (error) {
+                        console.error("Report submission error:", error);
+
+                        message.textContent =
+                            error instanceof Error
+                                ? error.message
+                                : "Could not submit the report. Check your connection and try again.";
+
+                        message.style.color = "#b42318";
+                    } finally {
+                        restoreSubmitButton();
+                    }
+});
+
+function restoreSubmitButton() {
+                    if (submitButton instanceof HTMLButtonElement) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = "Submit Report";
+                    }
+}
+
+
+const refreshButton = document.getElementById("refreshButton");
+
+if (refreshButton instanceof HTMLButtonElement) {
+                    refreshButton.addEventListener("click", loadReports);
+}
+
+document.getElementById("searchInput")
+                    .addEventListener("input", loadReports);
+
+document.getElementById("filterWasteType")
+                    .addEventListener("change", loadReports);
+
+document.getElementById("filterStatus")
+                    .addEventListener("change", loadReports);
+
+if (getToken()) {
+            loadReports();
+            initializeWasteMap();
+            startNotificationPolling();
+}
+
+    </script>
+</body>
+</html>

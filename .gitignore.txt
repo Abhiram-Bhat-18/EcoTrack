@@ -1,0 +1,23 @@
+
+# .NET generated build folders
+**/bin/
+**/obj/
+
+# Visual Studio local files
+.vs/
+*.user
+*.suo
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Local-only secrets
+secrets.json
+
+# Local development configuration
+**/appsettings.Development.json
+
+# User-specific IDE settings
+*.sln.docstates
